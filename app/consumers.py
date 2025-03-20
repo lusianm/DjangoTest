@@ -1,6 +1,7 @@
 # your_app/consumers.py
 import json
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
+from .JsonClassis import *
 
 class LoginConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
@@ -16,6 +17,7 @@ class LoginConsumer(AsyncJsonWebsocketConsumer):
         클라이언트로부터 JSON 데이터를 수신하면 호출됩니다.
         content는 이미 dict 형태로 파싱되어 전달됩니다.
         """
+        print(f"Test")
         login_type = content.get("login_type")
         user_id = content.get("user_id")
         user_pw = content.get("user_pw")
@@ -32,7 +34,17 @@ class LoginConsumer(AsyncJsonWebsocketConsumer):
     async def process_kakao(self, user_id):
         # Kakao 로그인 처리 로직 (예시)
         print(f"[Kakao] 사용자 {user_id}의 로그인 처리 중...")
-        await self.send_json({"message": f"Kakao 로그인 처리 완료: {user_id}"})
+        print(f"test2")
+        login_response = LoginResponseData(
+            user_key="kakao",
+            user_token="abc123def456",
+            is_login_success=True,
+            is_new_user=False,
+            login_message="로그인 성공",
+            user_info="사용자 상세정보"
+        )
+        print(login_response.get_json())
+        await self.send_json(login_response.get_json())
 
     async def process_google(self, user_id):
         # Google 로그인 처리 로직 (예시)
