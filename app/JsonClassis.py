@@ -70,7 +70,7 @@ class UserRegisterRequestData(BaseModel):
             return cls(**data)
         except json.JSONDecodeError as e:
             print("JSON 파싱 오류:", e)
-            raisegit
+            raise
         except ValidationError as e:
             print("데이터 유효성 검사 실패:", e)
             raise
