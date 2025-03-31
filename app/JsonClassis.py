@@ -26,7 +26,7 @@ class LoginRequestData(BaseModel):
 
 class LoginResponseData(BaseModel):
     user_key: str  # "kakao" 또는 "google"
-    user_token: str
+    access_token: str
     is_login_success: bool
     is_new_user:bool
     login_message: str
@@ -80,7 +80,7 @@ class UserRegisterRequestData(BaseModel):
 
 class UserRegisterResponseData(BaseModel):
     user_key: str
-    user_token: str
+    access_token: str
     is_registered: bool
     register_message: str
     user_info: str

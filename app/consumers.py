@@ -37,7 +37,7 @@ class LoginConsumer(AsyncJsonWebsocketConsumer):
         print(f"test2")
         login_response = LoginResponseData(
             user_key="kakao",
-            user_token="abc123def456",
+            access_token="abc123def456",
             is_login_success=True,
             is_new_user=False,
             login_message="로그인 성공",
