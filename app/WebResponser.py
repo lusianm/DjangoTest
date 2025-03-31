@@ -2,6 +2,8 @@
 import json
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from .JsonClassis import *
+from .models import CustomUser
+from django.db.models import Q
 
 class LoginResponser(AsyncJsonWebsocketConsumer):
     async def connect(self):
@@ -17,28 +19,73 @@ class LoginResponser(AsyncJsonWebsocketConsumer):
             loginrequestdata = LoginRequestData(**content)
         except (json.JSONDecodeError, ValidationError) as e:
             print("데이터 처리 오류:", e)
-            await self.send_json({"error": "잘못된 데이터 형식입니다."})
+            login_response = LoginResponseData(
+                user_key="",
+                access_token="",
+                is_login_success=False,
+                is_new_user=False,
+                login_message="login_success",
+                user_info="Missing data: " + e
+            )
+            await self.send_json(login_response.get_json())
             return
+
+        #dummy data test용
+        if loginrequestdata.access_token == "dummy_access_token":
+            print("더미 데이터 반환")
+            login_response = LoginResponseData(
+                user_key="kakao",
+                access_token="abc123def456",
+                is_login_success=True,
+                is_new_user=False,
+                login_message="로그인 성공",
+                user_info="사용자 상세정보"
+            )
+            print(login_response.get_json())
+            await self.send_json(login_response.get_json())
 
         # 각 login_type에 따른 처리
         if loginrequestdata.login_type == "kakao":
-            await self.process_kakao(loginrequestdata.user_id)
+            await self.process_kakao(loginrequestdata)
         elif loginrequestdata.login_type == "google":
-            await self.process_google(loginrequestdata.user_id)
+            await self.process_google(loginrequestdata)
         else:
             await self.send_json({"error": f"알 수 없는 login_type: {loginrequestdata.login_type}"})
 
-    async def process_kakao(self, user_id):
+    async def process_kakao(self, loginrequestdata):
         # Kakao 로그인 처리 로직 (예시)
-        print(f"[Kakao] 사용자 {user_id}의 로그인 처리 중...")
-        login_response = LoginResponseData(
-            user_key="kakao",
-            user_token="abc123def456",
-            is_login_success=True,
-            is_new_user=False,
-            login_message="로그인 성공",
-            user_info="사용자 상세정보"
-        )
+        print(f"[Kakao] 사용자 {loginrequestdata.user_id}의 로그인 처리 중...")
+
+        login_response: LoginResponseData
+        try:
+            user: CustomUser = CustomUser.objects.get(user_id="testuser123")
+            if user.access_token == loginrequestdata.access_token:
+                login_response = LoginResponseData(
+                    user_key=user.user_key,
+                    access_token=user.access_token,
+                    is_login_success=True,
+                    is_new_user=False,
+                    login_message="login_success",
+                    user_info=user.user_name
+                )
+            else:
+                login_response = LoginResponseData(
+                    user_key=user.user_key,
+                    access_token=user.access_token,
+                    is_login_success=False,
+                    is_new_user=False,
+                    login_message="Invalid access token",
+                    user_info=user.user_name
+                )
+        except CustomUser.DoesNotExist:
+            login_response = LoginResponseData(
+                user_key="",
+                access_token="",
+                is_login_success=False,
+                is_new_user=False,
+                login_message="Unknown User ID",
+                user_info=""
+            )
         print(login_response.get_json())
         await self.send_json(login_response.get_json())
 
@@ -47,7 +94,7 @@ class LoginResponser(AsyncJsonWebsocketConsumer):
         print(f"[Google] 사용자 {user_id}의 로그인 처리 중...")
         login_response = LoginResponseData(
             user_key="kakao",
-            user_token="abc123def456",
+            access_token="abc123def456",
             is_login_success=True,
             is_new_user=False,
             login_message="로그인 성공",
@@ -71,20 +118,78 @@ class UserRegisterResponser(AsyncJsonWebsocketConsumer):
             print(requestData.get_json())
         except (json.JSONDecodeError, ValidationError) as e:
             print("데이터 처리 오류:", e)
-            await self.send_json({"error": "잘못된 데이터 형식입니다."})
+            responseData = UserRegisterResponseData(
+                user_key="",
+                access_token="",
+                is_registered=False,
+                register_message="Missing data: " + e,
+                user_info=""
+            )
+            print(responseData.get_json())
+            await self.send_json(responseData.get_json())
             return
 
-        await self.process_response()
+        await self.process_response(requestData)
 
-    async def process_response(self):
+    async def process_response(self, requestData):
         # Kakao 로그인 처리 로직 (예시)
         print(f"사용자 데이터 응답중...")
+        users = CustomUser.objects.filter(
+            Q(user_id=requestData.user_ID)
+        )
+        if users.exists():
+            responseData = UserRegisterResponseData(
+                user_key="",
+                access_token="",
+                is_registered=False,
+                register_message="Duplicated User ID",
+                user_info=""
+            )
+            print(responseData.get_json())
+            await self.send_json(responseData.get_json())
+            return
+
+        users = CustomUser.objects.filter(
+            Q(access_token=requestData.access_token)
+        )
+        if users.exists():
+            responseData = UserRegisterResponseData(
+                user_key="",
+                access_token="",
+                is_registered=False,
+                register_message="Duplicated Access Token",
+                user_info=""
+            )
+            print(responseData.get_json())
+            await self.send_json(responseData.get_json())
+            return
+
+        new_user = CustomUser.objects.create_user(
+            user_id=requestData.user_ID,
+            user_name=requestData.user_ID,
+            password=requestData.user_PW,
+            access_token = requestData.access_token,
+            login_type=requestData.login_type,  # extra_fields로 전달
+            birth_date=requestData.user_birth_date,  # 선택 필드
+            education_level=requestData.user_education_level,  # 선택 필드
+            desired_company=requestData.desired_company,  # 선택 필드
+            desired_job=requestData.desired_job,  # 선택 필드
+            job_prep_period_year = requestData.job_prep_period_year,
+            job_prep_period_month = requestData.job_prep_period_month,
+            job_prep_status = requestData.job_prep_status,
+            job_difficulties = requestData.job_difficulties,
+            interested_routine = requestData.interested_routine,
+            profile_image = "",
+            bio = "",
+            subscription_status = False
+        )
+
         responseData = UserRegisterResponseData(
-            user_key="dummy_key_001",
-            user_token="dummy_token_001",
+            user_key=new_user.user_key,
+            access_token=new_user.access_token,
             is_registered=True,
-            register_message="Registration successful.",
-            user_info="Sample user information."
+            register_message="register_success",
+            user_info=new_user.user_name
         )
         print(responseData.get_json())
         await self.send_json(responseData.get_json())
@@ -103,22 +208,39 @@ class UserInfoResponser(AsyncJsonWebsocketConsumer):
             requestData = UserInfoRequestData(**content)
             print(requestData.get_json())
         except (json.JSONDecodeError, ValidationError) as e:
-            print("데이터 처리 오류:", e)
-            await self.send_json({"error": "잘못된 데이터 형식입니다."})
+            responseData = UserInfoResponseData(
+                user_key="",
+                user_name="",
+                desired_company=0,
+                desired_job="",
+                is_subscribed=False
+            )
+            print(responseData.get_json())
+            await self.send_json(responseData.get_json())
             return
 
-        await self.process_response()
+        await self.process_response(requestData)
 
-    async def process_response(self):
-        # Kakao 로그인 처리 로직 (예시)
+    async def process_response(self, requestData):
         print(f"사용자 데이터 응답중...")
-        responseData = UserInfoResponseData(
-            user_key="dummy_key_002",
-            user_name="홍길동",
-            desired_company=123,
-            desired_job="Software Engineer",
-            is_subscribed=True
-        )
+        responseData: UserInfoResponseData
+        try:
+            user: CustomUser = CustomUser.objects.get(user_key=requestData.user_key)
+            responseData = UserInfoResponseData(
+                user_key=user.user_key,
+                user_name=user.user_name,
+                desired_company=user.desired_company,
+                desired_job=user.desired_job,
+                is_subscribed=user.subscription_status
+            )
+        except CustomUser.DoesNotExist:
+            responseData = UserInfoResponseData(
+                user_key="",
+                user_name="",
+                desired_company=0,
+                desired_job="",
+                is_subscribed=False
+            )
         print(responseData.get_json())
         await self.send_json(responseData.get_json())
 
@@ -136,8 +258,14 @@ class UserRoutineResponser(AsyncJsonWebsocketConsumer):
             requestData = UserRoutineRequestData(**content)
             print(requestData.get_json())
         except (json.JSONDecodeError, ValidationError) as e:
-            print("데이터 처리 오류:", e)
-            await self.send_json({"error": "잘못된 데이터 형식입니다."})
+            responseData = UserRoutineResponseData(
+                user_key="",
+                user_name="",
+                request_date=date(0000, 0, 0),
+                task_list=[]
+            )
+            print(responseData.get_json())
+            await self.send_json(responseData.get_json())
             return
 
         await self.process_response()
@@ -431,22 +559,40 @@ class UserBioInfoResponser(AsyncJsonWebsocketConsumer):
             requestData = UserBioInfoRequestData(**content)
             print(requestData.get_json())
         except (json.JSONDecodeError, ValidationError) as e:
-            print("데이터 처리 오류:", e)
-            await self.send_json({"error": "잘못된 데이터 형식입니다."})
+            responseData = UserBioInfoResponseData(
+                user_key="",
+                users_name="",
+                profile_image="",
+                bio="",
+                subscription_status=False
+            )
+            print(responseData.get_json())
+            await self.send_json(responseData.get_json())
             return
 
-        await self.process_response()
+        await self.process_response(requestData)
 
-    async def process_response(self):
+    async def process_response(self, requestData):
         # Kakao 로그인 처리 로직 (예시)
         print(f"사용자 데이터 응답중...")
-        responseData = UserBioInfoResponseData(
-            user_key="dummy_user_bio_001",
-            users_name="홍길동",
-            profile_image="https://example.com/profile.jpg",
-            bio="This is a sample bio for testing.",
-            subscription_status=True
-        )
+        responseData: UserBioInfoResponseData
+        try:
+            user: CustomUser = CustomUser.objects.get(user_key=requestData.user_key)
+            responseData = UserBioInfoResponseData(
+                user_key=user.user_key,
+                users_name=user.user_name,
+                profile_image=user.profile_image,
+                bio=user.bio,
+                subscription_status=user.subscription_status
+            )
+        except CustomUser.DoesNotExist:
+            responseData = UserBioInfoResponseData(
+                user_key="",
+                users_name="",
+                profile_image="",
+                bio="",
+                subscription_status=False
+            )
         print(responseData.get_json())
         await self.send_json(responseData.get_json())
 
@@ -465,18 +611,36 @@ class UserBioInfoUpdateResponser(AsyncJsonWebsocketConsumer):
             print(requestData.get_json())
         except (json.JSONDecodeError, ValidationError) as e:
             print("데이터 처리 오류:", e)
-            await self.send_json({"error": "잘못된 데이터 형식입니다."})
+            responseData = UserBioInfoUpdateResponseData(
+                user_key="",
+                status="fail",
+                message="Missing data: " + e
+            )
+            print(responseData.get_json())
+            await self.send_json(responseData.get_json())
             return
 
-        await self.process_response()
+        await self.process_response(requestData)
 
-    async def process_response(self):
+    async def process_response(self, requestData):
         # Kakao 로그인 처리 로직 (예시)
         print(f"사용자 데이터 응답중...")
-        responseData = UserBioInfoUpdateResponseData(
-            user_key="dummy_user_update_001",
-            status="Success",
-            message="User bio updated successfully."
-        )
+        responseData: UserBioInfoUpdateResponseData
+        try:
+            user: CustomUser = CustomUser.objects.get(user_key=requestData.user_key)
+            user.user_name = requestData.user_name
+            user.profile_image = requestData.profile_image
+            user.bio = requestData.bio
+            responseData = UserBioInfoUpdateResponseData(
+                user_key=requestData.user_key,
+                status="Success",
+                message="update_success"
+            )
+        except CustomUser.DoesNotExist:
+            responseData = UserBioInfoUpdateResponseData(
+                user_key=requestData.user_key,
+                status="fail",
+                message="Unknown user key"
+            )
         print(responseData.get_json())
         await self.send_json(responseData.get_json())
