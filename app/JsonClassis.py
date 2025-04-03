@@ -197,7 +197,7 @@ class AddRoutineRequestData(BaseModel):
     task_name: str
     task_category: str
     repeat_type: str
-    execute_days: list[str]
+    execute_days: str
     execute_description:str
     execute_time: time
     use_timer: bool
