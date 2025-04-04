@@ -125,6 +125,7 @@ class UserInfoResponseData(BaseModel):
     desired_company: int
     desired_job: str
     is_subscribed: bool
+    message: str
 
     @classmethod
     def from_json(cls, json_str: str) -> "UserInfoResponseData":
@@ -176,6 +177,7 @@ class UserRoutineResponseData(BaseModel):
     user_name: str
     request_date: date
     task_list: list[TaskData]
+    message: str
 
     @classmethod
     def from_json(cls, json_str: str) -> "UserRoutineResponseData":
@@ -284,6 +286,7 @@ class SuccessRoutineResponseData(BaseModel):
     likes: int
     routine_date: date
     user_routine: list[SuccessRoutineData]
+    message: str
 
     @classmethod
     def from_json(cls, json_str: str) -> "SuccessRoutineResponseData":
@@ -326,6 +329,7 @@ class SuccessLikeResponseData(BaseModel):
     user_name: str
     success_user_id: str
     likes: int
+    message: str
 
     @classmethod
     def from_json(cls, json_str: str) -> "SuccessLikeResponseData":
@@ -365,6 +369,7 @@ class SuccessRoutineCopyRequestData(BaseModel):
 class SuccessRoutineCopyResponseData(BaseModel):
     uers_key: str
     copied_tasks: int
+    message: str
 
     @classmethod
     def from_json(cls, json_str: str) -> "SuccessRoutineCopyResponseData":
@@ -414,6 +419,7 @@ class UserRoutineWeeklyStatisticsResponseData(BaseModel):
     total_completed: int
     praise_days: int
     weekly_data: list[Weekly_Routine_Data]
+    message: str
 
     @classmethod
     def from_json(cls, json_str: str) -> "UserRoutineWeeklyStatisticsResponseData":
@@ -462,6 +468,7 @@ class UserRoutineMonthlyStatisticsResponseData(BaseModel):
     total_completed: int
     praise_days: int
     monthly_data: list[Monthly_Routine_Data]
+    message: str
 
     @classmethod
     def from_json(cls, json_str: str) -> "UserRoutineMonthlyStatisticsResponseData":
@@ -503,6 +510,7 @@ class UserBioInfoResponseData(BaseModel):
     profile_image: str
     bio: str
     subscription_status: bool
+    message: str
 
     @classmethod
     def from_json(cls, json_str: str) -> "UserBioInfoResponseData":

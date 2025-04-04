@@ -1,8 +1,6 @@
-# your_app/consumers.py
-import json
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from .JsonClassis import *
-from .models import CustomUser, RoutineTask, RoutineTaskAchievement
+from .models import *
 from django.db.models import Q
 from asgiref.sync import sync_to_async
 from datetime import date, timedelta
@@ -63,6 +61,10 @@ class LoginResponser(AsyncJsonWebsocketConsumer):
         try:
             user: CustomUser = CustomUser.objects.get(user_id="testuser123")
             if user.access_token == loginrequestdata.access_token:
+
+                # Todo
+                # Access Token을 이용해 로그인 서버에 로그인 가능한지 검토하는 코드 추가할 것
+
                 login_response = LoginResponseData(
                     user_key=user.user_key,
                     access_token=user.access_token,
@@ -86,15 +88,18 @@ class LoginResponser(AsyncJsonWebsocketConsumer):
                 access_token="",
                 is_login_success=False,
                 is_new_user=False,
-                login_message="Unknown User ID",
+                login_message="Unknown User id",
                 user_info=""
             )
         print(login_response.get_json())
         await self.send_json(login_response.get_json())
 
     async def process_google(self, user_id):
-        # Google 로그인 처리 로직 (예시)
         print(f"[Google] 사용자 {user_id}의 로그인 처리 중...")
+
+        # Todo
+        # Access Token을 이용해 로그인 서버에 로그인 가능한지 검토하는 코드 추가할 것
+
         login_response = LoginResponseData(
             user_key="kakao",
             access_token="abc123def456",
@@ -216,7 +221,8 @@ class UserInfoResponser(AsyncJsonWebsocketConsumer):
                 user_name="",
                 desired_company=0,
                 desired_job="",
-                is_subscribed=False
+                is_subscribed=False,
+                message = "Missing data: " + e
             )
             print(responseData.get_json())
             await self.send_json(responseData.get_json())
@@ -234,7 +240,8 @@ class UserInfoResponser(AsyncJsonWebsocketConsumer):
                 user_name=user.user_name,
                 desired_company=user.desired_company,
                 desired_job=user.desired_job,
-                is_subscribed=user.subscription_status
+                is_subscribed=user.subscription_status,
+                message = "Success"
             )
         except CustomUser.DoesNotExist:
             responseData = UserInfoResponseData(
@@ -242,7 +249,8 @@ class UserInfoResponser(AsyncJsonWebsocketConsumer):
                 user_name="",
                 desired_company=0,
                 desired_job="",
-                is_subscribed=False
+                is_subscribed=False,
+                message = "Unknown User Key"
             )
         print(responseData.get_json())
         await self.send_json(responseData.get_json())
@@ -265,7 +273,8 @@ class UserRoutineResponser(AsyncJsonWebsocketConsumer):
                 user_key="",
                 user_name="",
                 request_date=date(1, 1, 1),
-                task_list=[]
+                task_list=[],
+                message = "Missing data: " + e
             )
             print(responseData.get_json())
             await self.send_json(responseData.get_json())
@@ -283,7 +292,8 @@ class UserRoutineResponser(AsyncJsonWebsocketConsumer):
                 user_key="",
                 user_name="",
                 request_date=date(1, 1, 1),
-                task_list=[]
+                task_list=[],
+                message = "Unknown User Key"
             )
             await self.send_json(responseData.get_json())
             return
@@ -346,41 +356,8 @@ class UserRoutineResponser(AsyncJsonWebsocketConsumer):
             user_key=str(user.user_key),
             user_name=user.user_name,
             request_date=selected_date,
-            task_list=task_data_list
-        )
-        print(responseData.get_json())
-        await self.send_json(responseData.get_json())
-
-    async def process_response_dummy(self):
-        # Kakao 로그인 처리 로직 (예시)
-        print(f"사용자 데이터 응답중...")
-        dummy_task1 = TaskData(
-            task_id="task_001",
-            task_name="Daily Workout",
-            task_category="Health",
-            execute_description="Do a 30-minute workout",
-            execute_time=time(6, 30),  # 오전 6시 30분
-            completed=False,
-            use_timer=True,
-            time_filter=15
-        )
-
-        dummy_task2 = TaskData(
-            task_id="task_002",
-            task_name="Read News",
-            task_category="Information",
-            execute_description="Read the daily news articles",
-            execute_time=time(8, 0),  # 오전 8시
-            completed=True,
-            use_timer=False,
-            time_filter=0
-        )
-
-        responseData = UserRoutineResponseData(
-            user_key="user_dummy_001",
-            user_name="Alice",
-            request_date=date(2025, 3, 19),
-            task_list=[dummy_task1, dummy_task2]
+            task_list=task_data_list,
+            message = "Success"
         )
         print(responseData.get_json())
         await self.send_json(responseData.get_json())
@@ -421,7 +398,7 @@ class AddRoutineResponser(AsyncJsonWebsocketConsumer):
                 uers_key=requestData.uers_key,
                 task_id="",
                 is_added=False,
-                routine_message="Unknown User ID"
+                routine_message="Unknown User Key"
             )
             await self.send_json(responseData.get_json())
             return
@@ -464,40 +441,96 @@ class SuccessRoutineResponser(AsyncJsonWebsocketConsumer):
             requestData = SuccessRoutineRequestData(**content)
             print(requestData.get_json())
         except (json.JSONDecodeError, ValidationError) as e:
-            print("데이터 처리 오류:", e)
-            await self.send_json({"error": "잘못된 데이터 형식입니다."})
+            responseData = SuccessRoutineResponseData(
+                uers_key="",
+                user_name="",
+                success_user_id="",
+                success_users_name="",
+                current_company="",
+                current_position="",
+                profile_image="",
+                university="",
+                major="",
+                graduation_year="",
+                previous_job="",
+                linkedin_url="",
+                likes=0,
+                routine_date=date(1, 1, 1),
+                user_routine=[],
+                message="Missing data: " + e
+            )
+            print(responseData.get_json())
+            await self.send_json(responseData.get_json())
             return
 
-        await self.process_response()
+        await self.process_response(requestData)
 
-    async def process_response(self):
-        # Kakao 로그인 처리 로직 (예시)
-        print(f"사용자 데이터 응답중...")
-        dummy_success_routine = SuccessRoutineData(
-            task_id="task_001",
-            task_name="Complete Assignment",
-            task_category="Study",
-            execute_description="Complete math assignment by 5 PM",
-            execute_time=time(17, 0),  # 오후 5시
-            time_filter=15
-        )
+    async def process_response(self, requestData: SuccessRoutineRequestData):
+        print("SuccessRoutine 정보 응답 처리중...")
 
+        # 1. 요청된 success_user_id로 SuccessRoutine 객체 조회
+        try:
+            success_routine = await sync_to_async(SuccessRoutine.objects.get)(
+                success_user_id=requestData.success_user_id
+            )
+        except SuccessRoutine.DoesNotExist:
+            responseData = SuccessRoutineResponseData(
+                uers_key="",
+                user_name="",
+                success_user_id="",
+                success_users_name="",
+                current_company="",
+                current_position="",
+                profile_image="",
+                university="",
+                major="",
+                graduation_year="",
+                previous_job="",
+                linkedin_url="",
+                likes=0,
+                routine_date=date(1, 1, 1),
+                user_routine=[],
+                message="Unknown Success User ID"
+            )
+            print(responseData.get_json())
+            await self.send_json(responseData.get_json())
+            return
+
+        # 2. 해당 SuccessRoutine에 연결된 RoutineTask들을 조회
+        #    (모델에서는 related_name이 'tasks'로 지정되어 있음)
+        success_tasks = await sync_to_async(list)(success_routine.tasks.all())
+
+        # 3. 각 RoutineTask를 SuccessRoutineData(Pydantic) 객체로 변환
+        routine_data_list = []
+        for task in success_tasks:
+            routine_data = SuccessRoutineData(
+                task_id=str(task.task_id),
+                task_name=task.task_name,
+                task_category=task.task_category,
+                execute_description=task.execute_description,
+                execute_time=task.execute_time,
+                time_filter=task.time_filter
+            )
+            routine_data_list.append(routine_data)
+
+        # 4. 응답 데이터 구성: 요청자의 uers_key, user_name은 요청 데이터에서 사용
         responseData = SuccessRoutineResponseData(
-            uers_key="dummy_user_003",
-            user_name="홍길동",
-            success_user_id="success_id_003",
-            success_users_name="성공사용자 홍길동",
-            current_company="Dummy Inc.",
-            current_position="Senior Developer",
-            profile_image="https://example.com/profile.jpg",
-            university="Dummy University",
-            major="Computer Engineering",
-            graduation_year="2018",
-            previous_job="Junior Developer",
-            linkedin_url="https://www.linkedin.com/in/dummyuser",
-            likes=100,
-            routine_date=date(2025, 3, 19),
-            user_routine=[dummy_success_routine]
+            uers_key=requestData.uers_key,
+            user_name=requestData.user_name,
+            success_user_id=success_routine.success_user_id,
+            success_users_name= requestData.user_name,
+            current_company=success_routine.current_company or "",
+            current_position=success_routine.current_position or "",
+            profile_image=success_routine.profile_image or "",
+            university=success_routine.university or "",
+            major=success_routine.major or "",
+            graduation_year=success_routine.graduation_year or "",
+            previous_job=success_routine.previous_job or "",
+            linkedin_url=success_routine.linkedin_url or "",
+            likes=success_routine.likes,
+            routine_date=date.today(),  # 오늘 날짜 또는 원하는 기준 날짜 사용
+            user_routine=routine_data_list,
+            message="Success"
         )
         print(responseData.get_json())
         await self.send_json(responseData.get_json())
@@ -517,20 +550,57 @@ class SuccessLikeResponser(AsyncJsonWebsocketConsumer):
             print(requestData.get_json())
         except (json.JSONDecodeError, ValidationError) as e:
             print("데이터 처리 오류:", e)
-            await self.send_json({"error": "잘못된 데이터 형식입니다."})
+            # 응답 데이터 구성
+            responseData = SuccessLikeResponseData(
+                uers_key="",
+                user_name="",
+                success_user_id="",
+                likes=0
+            )
+            print(responseData.get_json())
+            await self.send_json(responseData.get_json())
             return
 
         await self.process_response()
 
-    async def process_response(self):
+    async def process_response(self, requestData: SuccessLikeRequestData):
         # Kakao 로그인 처리 로직 (예시)
         print(f"사용자 데이터 응답중...")
 
+
+        # SuccessRoutine 객체를 success_user_id로 조회
+        try:
+            success_routine = await sync_to_async(SuccessRoutine.objects.get)(success_user_id=requestData.success_user_id)
+        except SuccessRoutine.DoesNotExist:
+            # 응답 데이터 구성
+            responseData = SuccessLikeResponseData(
+                uers_key=requestData.uers_key,
+                user_name="",
+                success_user_id=requestData.success_user_id,
+                likes=0,
+                message = "Unknown Success User ID"
+            )
+            print(responseData.get_json())
+            await self.send_json(responseData.get_json())
+            return
+
+        # liked가 True이면 좋아요 수 증가, False이면 좋아요 수 감소 (0 미만은 안되도록 처리)
+        if requestData.liked:
+            success_routine.likes += 1
+        else:
+            if success_routine.likes > 0:
+                success_routine.likes -= 1
+
+        # 변경된 객체 저장 (비동기 ORM 호출)
+        await sync_to_async(success_routine.save)()
+
+        # 응답 데이터 구성
         responseData = SuccessLikeResponseData(
-            uers_key="dummy_user_001",
-            user_name="홍길동",
-            success_user_id="success_id_001",
-            likes=100
+            uers_key=requestData.uers_key,
+            user_name=requestData.user_name,
+            success_user_id=requestData.success_user_id,
+            likes=success_routine.likes,
+            message="Success"
         )
         print(responseData.get_json())
         await self.send_json(responseData.get_json())
@@ -549,21 +619,75 @@ class SuccessRoutineCopyResponser(AsyncJsonWebsocketConsumer):
             requestData = SuccessRoutineCopyRequestData(**content)
             print(requestData.get_json())
         except (json.JSONDecodeError, ValidationError) as e:
-            print("데이터 처리 오류:", e)
-            await self.send_json({"error": "잘못된 데이터 형식입니다."})
+
+            responseData = SuccessRoutineCopyResponseData(
+                uers_key="",
+                copied_tasks=0,
+                message = "Missing data: " + e
+            )
+            print(responseData.get_json())
+            await self.send_json(responseData.get_json())
             return
 
-        await self.process_response()
+        await self.process_response(requestData)
 
-    async def process_response(self):
+    async def process_response(self, requestData: SuccessRoutineCopyRequestData):
         # Kakao 로그인 처리 로직 (예시)
         print(f"사용자 데이터 응답중...")
 
+        # 1. 대상 사용자 조회 (복사 받을 사용자)
+        try:
+            target_user: CustomUser = await sync_to_async(CustomUser.objects.get)(user_key=requestData.uers_key)
+        except CustomUser.DoesNotExist:
+            responseData = SuccessRoutineCopyResponseData(
+                uers_key="",
+                copied_tasks=0,
+                message = "Unknown User Key"
+            )
+            print(responseData.get_json())
+            await self.send_json(responseData.get_json())
+            return
+
+        # 2. 복사할 SuccessRoutine 조회 (원본 Routine)
+        try:
+            source_success_routine = await sync_to_async(SuccessRoutine.objects.get)(success_user_id=requestData.success_user_id)
+        except SuccessRoutine.DoesNotExist:
+            responseData = SuccessRoutineCopyResponseData(
+                uers_key="",
+                copied_tasks=0,
+                message = "Unknown Success User ID"
+            )
+            print(responseData.get_json())
+            await self.send_json(responseData.get_json())
+            return
+
+        # 3. 해당 SuccessRoutine에 연결된 모든 SuccessRoutineTask를 조회
+        source_tasks = await sync_to_async(list)(source_success_routine.tasks.all())
+        copied_count = 0
+
+        # 4. 각 SuccessRoutineTask를 대상 사용자의 RoutineTask로 복사
+        for source_task in source_tasks:
+            # RoutineTask 필드는 SuccessRoutineTask와 거의 유사하므로 값만 복사합니다.
+            await sync_to_async(RoutineTask.objects.create)(
+                user=target_user,
+                task_name=source_task.task_name,
+                task_category=source_task.task_category,
+                repeat_type=source_task.repeat_type,
+                execute_days=source_task.execute_days,
+                execute_description=source_task.execute_description,
+                execute_time=source_task.execute_time,
+                use_timer=source_task.use_timer,
+                time_filter=source_task.time_filter,
+                start_date=source_task.start_date,
+                end_date=source_task.end_date
+            )
+            copied_count += 1
+
         responseData = SuccessRoutineCopyResponseData(
-            uers_key="dummy_user_004",
-            copied_tasks=3
+            uers_key=requestData.uers_key,
+            copied_tasks=copied_count,
+            message = "Success"
         )
-        print(responseData.get_json())
         await self.send_json(responseData.get_json())
 
 class UserRoutineWeeklyStatisticsResponser(AsyncJsonWebsocketConsumer):
@@ -587,7 +711,8 @@ class UserRoutineWeeklyStatisticsResponser(AsyncJsonWebsocketConsumer):
                 end_date=date(1, 1, 1),
                 total_completed=0,
                 praise_days=0,
-                weekly_data=[]
+                weekly_data=[],
+                message= "Missing Data: " + e
             )
             print(responseData.get_json())
             await self.send_json(responseData.get_json())
@@ -631,7 +756,8 @@ class UserRoutineWeeklyStatisticsResponser(AsyncJsonWebsocketConsumer):
                 end_date=date(1, 1, 1),
                 total_completed=0,
                 praise_days=0,
-                weekly_data=[]
+                weekly_data=[],
+                message= "Unknown User Key"
             )
             print(responseData.get_json())
             await self.send_json(responseData.get_json())
@@ -683,7 +809,8 @@ class UserRoutineWeeklyStatisticsResponser(AsyncJsonWebsocketConsumer):
             end_date=end_date,
             total_completed=total_completed,
             praise_days=praise_days,
-            weekly_data=weekly_data_list
+            weekly_data=weekly_data_list,
+            message= "Success"
         )
 
 
@@ -710,7 +837,8 @@ class UserRoutineMonthlyStatisticsResponser(AsyncJsonWebsocketConsumer):
                 month=date(1, 1, 1),
                 total_completed=1,
                 praise_days=1,
-                monthly_data=[]
+                monthly_data=[],
+                message="Missing Data: " + e
             )
             print(responseData.get_json())
             await self.send_json(responseData.get_json())
@@ -721,28 +849,6 @@ class UserRoutineMonthlyStatisticsResponser(AsyncJsonWebsocketConsumer):
     async def process_response(self, requestData: UserRoutineMonthlyStatisticsRequestData):
         # Kakao 로그인 처리 로직 (예시)
         print(f"사용자 데이터 응답중...")
-        '''
-        dummy_monthly_routine1 = Monthly_Routine_Data(
-            routine_date=date(2025, 3, 1),
-            completion_rate=80,
-            status="Completed"
-        )
-
-        dummy_monthly_routine2 = Monthly_Routine_Data(
-            routine_date=date(2025, 3, 15),
-            completion_rate=90,
-            status="Completed"
-        )
-
-        responseData = UserRoutineMonthlyStatisticsResponseData(
-            user_key="dummy_user_monthly_001",
-            statistics_type="monthly",
-            month=date(2025, 3, 1),
-            total_completed=10,
-            praise_days=4,
-            monthly_data=[dummy_monthly_routine1, dummy_monthly_routine2]
-        )
-        '''
         # 1. 사용자 조회
         try:
             user: CustomUser = await sync_to_async(CustomUser.objects.get)(user_key=requestData.user_key)
@@ -753,7 +859,8 @@ class UserRoutineMonthlyStatisticsResponser(AsyncJsonWebsocketConsumer):
                 month=date(1, 1, 1),
                 total_completed=1,
                 praise_days=1,
-                monthly_data=[]
+                monthly_data=[],
+                message="Unknown User Key"
             )
             print(responseData.get_json())
             await self.send_json(responseData.get_json())
@@ -843,7 +950,8 @@ class UserRoutineMonthlyStatisticsResponser(AsyncJsonWebsocketConsumer):
             month=start_date,  # 월의 시작일을 month 필드에 사용
             total_completed=total_completed,
             praise_days=praise_days,
-            monthly_data=monthly_data_list
+            monthly_data=monthly_data_list,
+            message="Success"
         )
         print(responseData.get_json())
         await self.send_json(responseData.get_json())
@@ -867,7 +975,8 @@ class UserBioInfoResponser(AsyncJsonWebsocketConsumer):
                 users_name="",
                 profile_image="",
                 bio="",
-                subscription_status=False
+                subscription_status=False,
+                message = "Missing Data: " + e
             )
             print(responseData.get_json())
             await self.send_json(responseData.get_json())
@@ -886,7 +995,8 @@ class UserBioInfoResponser(AsyncJsonWebsocketConsumer):
                 users_name=user.user_name,
                 profile_image=user.profile_image,
                 bio=user.bio,
-                subscription_status=user.subscription_status
+                subscription_status=user.subscription_status,
+                message = "Success"
             )
         except CustomUser.DoesNotExist:
             responseData = UserBioInfoResponseData(
@@ -894,7 +1004,8 @@ class UserBioInfoResponser(AsyncJsonWebsocketConsumer):
                 users_name="",
                 profile_image="",
                 bio="",
-                subscription_status=False
+                subscription_status=False,
+                message = "Unknown User Key"
             )
         print(responseData.get_json())
         await self.send_json(responseData.get_json())

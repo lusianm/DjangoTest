@@ -18,7 +18,6 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_superuser', True)
         return self.create_user(user_id, user_name, password, **extra_fields)
 
-
 # 사용자 모델: 로그인, 회원가입, 프로필 관련 모든 정보를 포함
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     # 사용자 구분 및 고유 식별자
@@ -103,7 +102,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return f"{self.user_name} ({self.user_id})"
 
-
 # RoutineTask 모델: 사용자의 루틴(태스크) 관련 정보를 저장
 class RoutineTask(models.Model):
     # Routine 식별자
@@ -178,7 +176,6 @@ class SuccessRoutine(models.Model):
 
     def __str__(self):
         return f"SuccessRoutine by {self.success_user_id}"
-
 
 # SuccessRoutineTask 모델: 성공자의 루틴 정보를 저장
 class SuccessRoutineTask(models.Model):
