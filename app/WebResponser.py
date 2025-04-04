@@ -555,7 +555,8 @@ class SuccessLikeResponser(AsyncJsonWebsocketConsumer):
                 uers_key="",
                 user_name="",
                 success_user_id="",
-                likes=0
+                likes=0,
+                message="Missing Data: " + e
             )
             print(responseData.get_json())
             await self.send_json(responseData.get_json())
